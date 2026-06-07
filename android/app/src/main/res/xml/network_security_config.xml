@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Permits cleartext (HTTP) traffic so the app can reach the Go ledger-api dev server
+    over a local IP (e.g. http://10.63.185.114:8080). Android blocks cleartext by default
+    on targetSdk 28+, which otherwise fails every request with a network exception (code -1).
+
+    Production note: once the Go service is deployed behind HTTPS (Railway/Fly.io), the app
+    uses https:// and this config is irrelevant. Tighten or remove for a hardened release build.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

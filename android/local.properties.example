@@ -1,0 +1,16 @@
+# Copy this file to local.properties and fill in real values.
+# local.properties is gitignored — never commit it.
+
+# ── Supabase ─────────────────────────────────────────────────────────────────
+# Project Settings → API
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_ANON_KEY=eyJ...
+
+# ── Go backend ───────────────────────────────────────────────────────────────
+# Your deployed ledger-api URL (no trailing slash)
+# For local dev: http://10.0.2.2:8080  (emulator) or http://192.168.x.x:8080 (device)
+API_BASE_URL=https://your-api.fly.dev
+
+# ── Google Sign-In ───────────────────────────────────────────────────────────
+# Google Cloud Console → APIs & Services → Credentials → Web client → Client ID
+GOOGLE_WEB_CLIENT_ID=123456789-abc.apps.googleusercontent.com

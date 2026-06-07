@@ -1,0 +1,32 @@
+# Android build output
+*.iml
+.gradle/
+/local.properties
+/build
+/app/build
+/captures
+.externalNativeBuild
+.cxx
+
+# APKs and keystores
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Firebase — contains API keys; download your own from Firebase Console
+app/google-services.json
+
+# Sensitive config — copy local.properties.example and fill in values
+local.properties
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Kotlin build cache
+.kotlin/

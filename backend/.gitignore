@@ -1,0 +1,23 @@
+# Binaries
+bin/
+*.exe
+*.exe~
+
+# Test artifacts
+*.test
+*.out
+coverage.html
+
+# Environment — copy .env.example and fill in values
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store

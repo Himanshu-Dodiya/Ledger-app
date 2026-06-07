@@ -1,0 +1,4 @@
+<resources>
+    <!-- Compose draws its own Material3 theme; the activity just needs a no-action-bar base. -->
+    <style name="Theme.LedgerCollector" parent="Theme.Material3.DayNight.NoActionBar" />
+</resources>
