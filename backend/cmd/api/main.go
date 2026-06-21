@@ -16,9 +16,13 @@ import (
 	"github.com/himanshu/ledger-api/internal/db"
 	"github.com/himanshu/ledger-api/internal/devices"
 	"github.com/himanshu/ledger-api/internal/gmail"
+	"github.com/himanshu/ledger-api/internal/groups"
 	"github.com/himanshu/ledger-api/internal/httpx"
 	"github.com/himanshu/ledger-api/internal/ingest"
+	"github.com/himanshu/ledger-api/internal/insights"
 	"github.com/himanshu/ledger-api/internal/notify"
+	"github.com/himanshu/ledger-api/internal/people"
+	"github.com/himanshu/ledger-api/internal/splits"
 	"github.com/himanshu/ledger-api/internal/transactions"
 )
 
@@ -67,6 +71,10 @@ func main() {
 	ingest.NewHandler(pool, notifier).Register(mux, authMW)
 	gmail.NewHandler(pool).Register(mux, authMW)
 	devices.NewHandler(pool).Register(mux, authMW)
+	people.NewHandler(pool).Register(mux, authMW)
+	splits.NewHandler(pool).Register(mux, authMW)
+	groups.NewHandler(pool).Register(mux, authMW)
+	insights.NewHandler(pool).Register(mux, authMW)
 
 	handler := httpx.CORS(httpx.Logging(mux))
 

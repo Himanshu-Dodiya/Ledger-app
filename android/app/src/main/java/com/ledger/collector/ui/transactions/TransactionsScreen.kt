@@ -1,6 +1,9 @@
 package com.ledger.collector.ui.transactions
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,10 +16,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -24,7 +32,9 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,10 +48,28 @@ import com.ledger.collector.ui.components.formatAmount
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TransactionsScreen(vm: TransactionsViewModel, modifier: Modifier = Modifier) {
-    val items by vm.items.collectAsStateWithLifecycle()
+fun TransactionsScreen(
+    vm: TransactionsViewModel,
+    modifier: Modifier = Modifier,
+    onRowClick: (TransactionEntity) -> Unit = {},
+) {
+    val allItems by vm.items.collectAsStateWithLifecycle()
     val refreshing by vm.refreshing.collectAsStateWithLifecycle()
     val error by vm.error.collectAsStateWithLifecycle()
+
+    var query by remember { mutableStateOf("") }
+    var source by remember { mutableStateOf<String?>(null) }
+    var category by remember { mutableStateOf<String?>(null) }
+
+    val sources = remember(allItems) { allItems.map { it.source }.distinct().sorted() }
+    val categories = remember(allItems) { allItems.map { it.category }.distinct().sorted() }
+    val items = remember(allItems, query, source, category) {
+        allItems.filter { t ->
+            (source == null || t.source == source) &&
+                (category == null || t.category == category) &&
+                (query.isBlank() || t.merchantRaw?.contains(query, ignoreCase = true) == true)
+        }
+    }
 
     PullToRefreshBox(
         isRefreshing = refreshing,
@@ -65,6 +93,34 @@ fun TransactionsScreen(vm: TransactionsViewModel, modifier: Modifier = Modifier)
                     Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.height(8.dp))
                 }
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    placeholder = { Text("Search merchant") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (sources.size > 1) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(source == null, { source = null }, label = { Text("All sources") })
+                        sources.forEach { s ->
+                            FilterChip(source == s, { source = if (source == s) null else s }, label = { Text(s) })
+                        }
+                    }
+                }
+                if (categories.size > 1) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(category == null, { category = null }, label = { Text("All") })
+                        categories.forEach { c ->
+                            FilterChip(category == c, { category = if (category == c) null else c }, label = { Text(c) })
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
             }
 
             when {
@@ -82,7 +138,7 @@ fun TransactionsScreen(vm: TransactionsViewModel, modifier: Modifier = Modifier)
                             )
                         }
                         items(txns, key = { it.id }) { txn ->
-                            SwipeToDeleteRow(txn = txn, onDelete = { vm.delete(txn.id) })
+                            SwipeToDeleteRow(txn = txn, onDelete = { vm.delete(txn.id) }, onClick = { onRowClick(txn) })
                         }
                     }
                 }
@@ -93,34 +149,59 @@ fun TransactionsScreen(vm: TransactionsViewModel, modifier: Modifier = Modifier)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SwipeToDeleteRow(txn: TransactionEntity, onDelete: () -> Unit) {
+private fun SwipeToDeleteRow(txn: TransactionEntity, onDelete: () -> Unit, onClick: () -> Unit) {
     val state = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             if (value == SwipeToDismissBoxValue.EndToStart) { onDelete(); true } else false
         }
     )
+    // Only tint the background while the row is actively being swiped, so the History
+    // list never shows a resting red panel behind cards.
+    val swiping = state.targetValue == SwipeToDismissBoxValue.EndToStart ||
+        state.dismissDirection == SwipeToDismissBoxValue.EndToStart
     SwipeToDismissBox(
         state = state,
+        enableDismissFromStartToEnd = false,
         backgroundContent = {
             Box(
-                Modifier.fillMaxSize().background(MaterialTheme.colorScheme.errorContainer),
+                Modifier
+                    .fillMaxSize()
+                    .padding(vertical = 2.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        if (swiping) MaterialTheme.colorScheme.errorContainer else Color.Transparent
+                    ),
                 contentAlignment = Alignment.CenterEnd,
             ) {
-                Text("Delete", Modifier.padding(end = 16.dp), color = MaterialTheme.colorScheme.error)
+                if (swiping) {
+                    Row(
+                        Modifier.padding(end = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Icon(
+                            Icons.Outlined.Delete,
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                        Text("Delete", color = MaterialTheme.colorScheme.onErrorContainer)
+                    }
+                }
             }
         },
     ) {
-        TxnRow(txn)
+        TxnRow(txn, onClick)
     }
 }
 
 @Composable
-private fun TxnRow(txn: TransactionEntity) {
+private fun TxnRow(txn: TransactionEntity, onClick: () -> Unit) {
     val isCredit = txn.direction.equals("credit", ignoreCase = true)
     Card(
         Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
+            .padding(vertical = 2.dp)
+            .clickable(onClick = onClick),
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Row(
@@ -135,6 +216,7 @@ private fun TxnRow(txn: TransactionEntity) {
                     ) {
                         SourceBadge(txn.source)
                         Text(txn.txnDate, style = MaterialTheme.typography.labelSmall)
+                        if (txn.isSplit) SourceBadge("split")
                     }
                     Text(
                         txn.merchantRaw?.takeIf { it.isNotBlank() } ?: "Unknown merchant",

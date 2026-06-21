@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -17,9 +18,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Inbox
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -58,14 +61,22 @@ import com.ledger.collector.hasSmsPermission
 import com.ledger.collector.services.DeviceRegistration
 import com.ledger.collector.ui.auth.LoginScreen
 import com.ledger.collector.ui.auth.LoginViewModel
-import com.ledger.collector.ui.home.HomeScreen
+import com.ledger.collector.ui.activity.ActivityScreen
+import com.ledger.collector.ui.analytics.AnalyticsViewModel
+import com.ledger.collector.ui.home.HomeHubScreen
 import com.ledger.collector.ui.home.HomeViewModel
-import com.ledger.collector.ui.inbox.InboxScreen
+import com.ledger.collector.ui.imports.ImportScreen
+import com.ledger.collector.ui.imports.ImportViewModel
 import com.ledger.collector.ui.inbox.InboxViewModel
+import com.ledger.collector.ui.people.PeopleHubScreen
+import com.ledger.collector.ui.people.PeopleViewModel
+import com.ledger.collector.ui.qr.PaymentPreviewSheet
+import com.ledger.collector.ui.qr.QrPayViewModel
+import com.ledger.collector.ui.qr.QrScanScreen
+import com.ledger.collector.ui.split.SplitViewModel
 import com.ledger.collector.ui.settings.SettingsScreen
 import com.ledger.collector.ui.settings.SettingsViewModel
 import com.ledger.collector.ui.theme.LedgerCollectorTheme
-import com.ledger.collector.ui.transactions.TransactionsScreen
 import com.ledger.collector.ui.transactions.TransactionsViewModel
 import com.ledger.collector.work.SmsWorkScheduler
 import io.github.jan.supabase.auth.handleDeeplinks
@@ -211,6 +222,13 @@ private fun MainScaffold(
     val inbox: InboxViewModel = viewModel(factory = factory)
     val txns: TransactionsViewModel = viewModel(factory = factory)
     val home: HomeViewModel = viewModel(factory = factory)
+    val imports: ImportViewModel = viewModel(factory = factory)
+    val peopleVm: PeopleViewModel = viewModel(factory = factory)
+    val splitVm: SplitViewModel = viewModel(factory = factory)
+    val qrVm: QrPayViewModel = viewModel(factory = factory)
+    val analyticsVm: AnalyticsViewModel = viewModel(factory = factory)
+    var showScanner by rememberSaveable { mutableStateOf(false) }
+    val scanned by qrVm.scanned.collectAsStateWithLifecycle()
 
     Scaffold(
         bottomBar = {
@@ -218,24 +236,38 @@ private fun MainScaffold(
                 NavigationBarItem(
                     selected = tab == 0,
                     onClick = { tab = 0 },
-                    icon = { Icon(Icons.Filled.Inbox, contentDescription = "Review") },
-                    label = { Text("Review", maxLines = 1, softWrap = false) },
-                )
-                NavigationBarItem(
-                    selected = tab == 1,
-                    onClick = { tab = 1 },
-                    icon = { Icon(Icons.Filled.CheckCircle, contentDescription = "History") },
-                    label = { Text("History", maxLines = 1, softWrap = false) },
-                )
-                NavigationBarItem(
-                    selected = tab == 2,
-                    onClick = { tab = 2 },
                     icon = { Icon(Icons.Filled.Home, contentDescription = "Overview") },
                     label = { Text("Overview", maxLines = 1, softWrap = false) },
                 )
                 NavigationBarItem(
+                    selected = tab == 1,
+                    onClick = { tab = 1 },
+                    icon = { Icon(Icons.Filled.ReceiptLong, contentDescription = "Activity") },
+                    label = { Text("Activity", maxLines = 1, softWrap = false) },
+                )
+                // Dedicated QR-pay entry point: opens the scanner overlay directly from the nav
+                // bar (a primary action) without taking over a content destination.
+                NavigationBarItem(
+                    selected = false,
+                    onClick = { qrVm.reset(); showScanner = true },
+                    icon = { Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan & pay") },
+                    label = { Text("Scan", maxLines = 1, softWrap = false) },
+                )
+                NavigationBarItem(
+                    selected = tab == 2,
+                    onClick = { tab = 2 },
+                    icon = { Icon(Icons.Filled.Download, contentDescription = "Import") },
+                    label = { Text("Import", maxLines = 1, softWrap = false) },
+                )
+                NavigationBarItem(
                     selected = tab == 3,
                     onClick = { tab = 3 },
+                    icon = { Icon(Icons.Filled.Group, contentDescription = "People") },
+                    label = { Text("People", maxLines = 1, softWrap = false) },
+                )
+                NavigationBarItem(
+                    selected = tab == 4,
+                    onClick = { tab = 4 },
                     icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings") },
                     label = { Text("Settings", maxLines = 1, softWrap = false) },
                 )
@@ -243,17 +275,42 @@ private fun MainScaffold(
         },
     ) { padding ->
         when (tab) {
-            0 -> InboxScreen(vm = inbox, modifier = Modifier.padding(padding))
-            1 -> TransactionsScreen(vm = txns, modifier = Modifier.padding(padding))
-            2 -> HomeScreen(
-                vm = home,
+            0 -> HomeHubScreen(
+                home = home,
+                analytics = analyticsVm,
                 onRequestPermission = onRequestSmsPermission,
                 modifier = Modifier.padding(padding),
             )
+            1 -> ActivityScreen(inbox = inbox, txns = txns, split = splitVm, modifier = Modifier.padding(padding))
+            2 -> ImportScreen(
+                vm = imports,
+                onSyncSms = { home.syncNow() },
+                onSyncGmail = onConnectGmail,
+                onScanQr = { showScanner = true },
+                modifier = Modifier.padding(padding),
+            )
+            3 -> PeopleHubScreen(vm = peopleVm, split = splitVm, modifier = Modifier.padding(padding))
             else -> SettingsScreen(
                 vm = settingsViewModel,
                 modifier = Modifier.padding(padding),
                 onConnectGmail = onConnectGmail,
+            )
+        }
+    }
+
+    // QR scan + pay overlay sits above the whole app while active.
+    if (showScanner) {
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim)) {
+            QrScanScreen(
+                onDetected = { qrVm.onScanned(it) },
+                onClose = { qrVm.reset(); showScanner = false },
+            )
+        }
+        scanned?.let { upi ->
+            PaymentPreviewSheet(
+                vm = qrVm,
+                upi = upi,
+                onClose = { qrVm.reset(); showScanner = false },
             )
         }
     }

@@ -10,12 +10,29 @@ const (
 	Credit Direction = "credit"
 )
 
-// Source of a transaction row.
+// Source of a transaction row. Every import path ultimately produces a transaction
+// with one of these source labels; the unified model is otherwise identical.
 const (
-	SourceSMS    = "sms"
-	SourceGmail  = "gmail"
-	SourceManual = "manual"
+	SourceSMS        = "sms"
+	SourceGmail      = "gmail"
+	SourceManual     = "manual"
+	SourceGPayPDF    = "gpay_pdf"
+	SourcePaytmPDF   = "paytm_pdf"
+	SourcePhonePePDF = "phonepe_pdf"
+	SourceBankPDF    = "bank_pdf"
+	SourceCSV        = "csv"
+	SourceQR         = "qr"
 )
+
+// validSources is the set accepted by the batch-ingest endpoint.
+var validSources = map[string]bool{
+	SourceSMS: true, SourceGmail: true, SourceManual: true,
+	SourceGPayPDF: true, SourcePaytmPDF: true, SourcePhonePePDF: true,
+	SourceBankPDF: true, SourceCSV: true, SourceQR: true,
+}
+
+// IsValidSource reports whether s is a known source label.
+func IsValidSource(s string) bool { return validSources[s] }
 
 // Categories is the fixed category set, shared with the Android app and the web
 // dashboard. Order is intentional (Uncategorized last).

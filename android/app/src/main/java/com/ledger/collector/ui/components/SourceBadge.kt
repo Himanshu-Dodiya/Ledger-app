@@ -21,6 +21,14 @@ fun SourceBadge(source: String, modifier: Modifier = Modifier) {
     val (label, bg, fg) = when (source.lowercase()) {
         "sms" -> Triple("SMS", Color(0xFFDBEAFE), Color(0xFF1D4ED8))
         "gmail" -> Triple("GMAIL", Color(0xFFD1FAE5), Color(0xFF047857))
+        "gpay_pdf" -> Triple("GPAY", Color(0xFFE0E7FF), Color(0xFF4338CA))
+        "paytm_pdf" -> Triple("PAYTM", Color(0xFFCFFAFE), Color(0xFF0E7490))
+        "phonepe_pdf" -> Triple("PHONEPE", Color(0xFFEDE9FE), Color(0xFF6D28D9))
+        "bank_pdf" -> Triple("BANK", Color(0xFFF1F5F9), Color(0xFF334155))
+        "csv" -> Triple("CSV", Color(0xFFFEF3C7), Color(0xFF92400E))
+        "qr" -> Triple("QR", Color(0xFFFCE7F3), Color(0xFFBE185D))
+        "manual" -> Triple("MANUAL", Color(0xFFE5E7EB), Color(0xFF374151))
+        "split" -> Triple("SPLIT", Color(0xFFFEF9C3), Color(0xFFA16207))
         else -> Triple(source.uppercase(), Color(0xFFE5E7EB), Color(0xFF374151))
     }
     Text(

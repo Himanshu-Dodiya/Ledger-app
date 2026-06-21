@@ -107,6 +107,17 @@ dependencies {
     // Direct backend calls to the Next.js API (POST /api/sms, PATCH/DELETE /api/transactions).
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
+    // On-device PDF text extraction for statement import (Google Pay / Paytm / bank PDFs).
+    // PdfBox-Android is a pure-JVM port — statements are parsed locally and never uploaded.
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
+
+    // QR scanning for UPI payments: CameraX preview + on-device ML Kit barcode detection.
+    implementation("androidx.camera:camera-core:1.3.4")
+    implementation("androidx.camera:camera-camera2:1.3.4")
+    implementation("androidx.camera:camera-lifecycle:1.3.4")
+    implementation("androidx.camera:camera-view:1.3.4")
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
+
     // Google sign-in via Credential Manager (returns a Google ID token for Supabase).
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")

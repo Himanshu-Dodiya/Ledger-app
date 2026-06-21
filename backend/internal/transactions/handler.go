@@ -30,6 +30,7 @@ type Transaction struct {
 	GmailMessageID     *string  `json:"gmail_message_id"`
 	RawSnippet         *string  `json:"raw_snippet"`
 	Reviewed           bool     `json:"reviewed"`
+	IsSplit            bool     `json:"is_split"`
 	CreatedAt          string   `json:"created_at"`
 }
 
@@ -49,6 +50,7 @@ func (h *Handler) Register(mux *http.ServeMux, authMW func(http.Handler) http.Ha
 	mux.Handle("PATCH /v1/transactions/{id}", authMW(http.HandlerFunc(h.patch)))
 	mux.Handle("DELETE /v1/transactions/{id}", authMW(http.HandlerFunc(h.delete)))
 	mux.Handle("GET /v1/dashboard", authMW(http.HandlerFunc(h.dashboard)))
+	mux.Handle("GET /v1/analytics", authMW(http.HandlerFunc(h.analytics)))
 	mux.Handle("GET /v1/categories", authMW(http.HandlerFunc(h.categories)))
 }
 
@@ -76,7 +78,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		Limit:    limit,
 	})
 	if err != nil {
-		httpx.InternalError(w)
+		httpx.InternalErrorErr(w, "list transactions", err)
 		return
 	}
 	httpx.OK(w, rows)
@@ -146,7 +148,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 			httpx.Conflict(w, "duplicate transaction")
 			return
 		}
-		httpx.InternalError(w)
+		httpx.InternalErrorErr(w, "create transaction", err)
 		return
 	}
 	httpx.Created(w, txn)
@@ -182,7 +184,7 @@ func (h *Handler) patch(w http.ResponseWriter, r *http.Request) {
 			httpx.NotFound(w)
 			return
 		}
-		httpx.InternalError(w)
+		httpx.InternalErrorErr(w, r.Method+" "+r.URL.Path, err)
 		return
 	}
 
@@ -205,7 +207,7 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 			httpx.NotFound(w)
 			return
 		}
-		httpx.InternalError(w)
+		httpx.InternalErrorErr(w, r.Method+" "+r.URL.Path, err)
 		return
 	}
 	httpx.OK(w, map[string]bool{"deleted": true})
@@ -237,7 +239,7 @@ func (h *Handler) dashboard(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := buildDashboard(r.Context(), h.pool, uid, month)
 	if err != nil {
-		httpx.InternalError(w)
+		httpx.InternalErrorErr(w, r.Method+" "+r.URL.Path, err)
 		return
 	}
 	httpx.OK(w, resp)
@@ -262,7 +264,7 @@ func listTransactions(ctx context.Context, pool *db.Pool, userID string, p listP
 	args := []any{userID}
 	sql := `SELECT id, amount, currency, direction, merchant_raw, merchant_normalized,
 	               category, payment_method, txn_date, reference_id, source,
-	               gmail_message_id, raw_snippet, reviewed, created_at
+	               gmail_message_id, raw_snippet, reviewed, is_split, created_at
 	        FROM transactions WHERE user_id = $1`
 
 	idx := 2
@@ -322,7 +324,7 @@ func listTransactions(ctx context.Context, pool *db.Pool, userID string, p listP
 			&t.Category, &t.PaymentMethod,
 			&txnDate, &t.ReferenceID,
 			&t.Source, &t.GmailMessageID, &t.RawSnippet,
-			&t.Reviewed, &createdAt,
+			&t.Reviewed, &t.IsSplit, &createdAt,
 		); err != nil {
 			return nil, err
 		}
@@ -349,7 +351,7 @@ func insertTransaction(ctx context.Context, pool *db.Pool, p insertParams) (*Tra
 		VALUES ($1,$2,'INR',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 		RETURNING id, amount, currency, direction, merchant_raw, merchant_normalized,
 		          category, payment_method, txn_date, reference_id, source,
-		          gmail_message_id, raw_snippet, reviewed, created_at`,
+		          gmail_message_id, raw_snippet, reviewed, is_split, created_at`,
 		p.UserID, p.Amount, p.Direction, p.MerchantRaw, p.MerchantNormalized,
 		p.Category, p.PaymentMethod, p.TxnDate, p.ReferenceID, p.Source, p.DedupeHash, p.Reviewed,
 	)
@@ -361,7 +363,7 @@ func insertTransaction(ctx context.Context, pool *db.Pool, p insertParams) (*Tra
 		&t.Category, &t.PaymentMethod,
 		&txnDate, &t.ReferenceID,
 		&t.Source, &t.GmailMessageID, &t.RawSnippet,
-		&t.Reviewed, &createdAt,
+		&t.Reviewed, &t.IsSplit, &createdAt,
 	); err != nil {
 		return nil, err
 	}
@@ -407,7 +409,7 @@ func patchTransaction(ctx context.Context, pool *db.Pool, userID, id string, cat
 	sql += ` WHERE user_id = $1 AND id = $2
 		RETURNING id, amount, currency, direction, merchant_raw, merchant_normalized,
 		          category, payment_method, txn_date, reference_id, source,
-		          gmail_message_id, raw_snippet, reviewed, created_at`
+		          gmail_message_id, raw_snippet, reviewed, is_split, created_at`
 
 	row := pool.QueryRow(ctx, sql, args...)
 	var t Transaction
@@ -418,7 +420,7 @@ func patchTransaction(ctx context.Context, pool *db.Pool, userID, id string, cat
 		&t.Category, &t.PaymentMethod,
 		&txnDate, &t.ReferenceID,
 		&t.Source, &t.GmailMessageID, &t.RawSnippet,
-		&t.Reviewed, &createdAt,
+		&t.Reviewed, &t.IsSplit, &createdAt,
 	); err != nil {
 		return nil, err
 	}

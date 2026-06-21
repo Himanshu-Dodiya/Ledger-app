@@ -22,5 +22,6 @@ data class TransactionEntity(
     val referenceId: String?,
     val source: String,
     val reviewed: Boolean,
+    val isSplit: Boolean = false,
     val createdAt: String,  // ISO timestamp
 )

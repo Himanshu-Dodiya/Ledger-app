@@ -19,6 +19,7 @@ data class TransactionDto(
     @SerialName("reference_id") val referenceId: String? = null,
     val source: String = "gmail",
     val reviewed: Boolean = true,
+    @SerialName("is_split") val isSplit: Boolean = false,
     @SerialName("created_at") val createdAt: String,
 ) {
     fun toEntity() = TransactionEntity(
@@ -34,6 +35,7 @@ data class TransactionDto(
         referenceId = referenceId,
         source = source,
         reviewed = reviewed,
+        isSplit = isSplit,
         createdAt = createdAt,
     )
 }

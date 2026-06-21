@@ -51,7 +51,7 @@ class AuthRepository(private val client: SupabaseClient) {
         client.auth.resetPasswordForEmail(email, redirectUrl = "io.ledger.collector://reset-callback")
     }
 
-    /** Called after the user arrives via the deep link and enters a new password. */
+/** Called after the user arrives via the deep link and enters a new password. */
     suspend fun updatePassword(newPassword: String) {
         client.auth.updateUser { password = newPassword }
     }

@@ -47,12 +47,12 @@ func (h *GmailHandler) connect(w http.ResponseWriter, r *http.Request) {
 
 	enc, err := EncryptToken(refreshToken)
 	if err != nil {
-		httpx.InternalError(w)
+		httpx.InternalErrorErr(w, r.Method+" "+r.URL.Path, err)
 		return
 	}
 
 	if err := StoreConnection(r.Context(), h.pool, uid, enc); err != nil {
-		httpx.InternalError(w)
+		httpx.InternalErrorErr(w, r.Method+" "+r.URL.Path, err)
 		return
 	}
 
@@ -76,7 +76,7 @@ func (h *GmailHandler) status(w http.ResponseWriter, r *http.Request) {
 	uid := auth.UserID(r.Context())
 	s, err := GetStatus(r.Context(), h.pool, uid)
 	if err != nil {
-		httpx.InternalError(w)
+		httpx.InternalErrorErr(w, r.Method+" "+r.URL.Path, err)
 		return
 	}
 	httpx.OK(w, s)
@@ -86,7 +86,7 @@ func (h *GmailHandler) status(w http.ResponseWriter, r *http.Request) {
 func (h *GmailHandler) disconnect(w http.ResponseWriter, r *http.Request) {
 	uid := auth.UserID(r.Context())
 	if err := Disconnect(r.Context(), h.pool, uid); err != nil {
-		httpx.InternalError(w)
+		httpx.InternalErrorErr(w, r.Method+" "+r.URL.Path, err)
 		return
 	}
 	httpx.OK(w, map[string]bool{"disconnected": true})

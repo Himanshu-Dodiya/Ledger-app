@@ -6,13 +6,20 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [SmsMessageEntity::class, TransactionEntity::class],
-    version = 2,
+    entities = [
+        SmsMessageEntity::class,
+        TransactionEntity::class,
+        PersonEntity::class,
+        TagEntity::class,
+        PersonTagCrossRef::class,
+    ],
+    version = 3,
     exportSchema = false
 )
 abstract class LedgerDatabase : RoomDatabase() {
     abstract fun smsMessageDao(): SmsMessageDao
     abstract fun transactionDao(): TransactionDao
+    abstract fun peopleDao(): PeopleDao
 
     companion object {
         fun build(context: Context): LedgerDatabase =

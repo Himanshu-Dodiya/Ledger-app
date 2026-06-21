@@ -44,6 +44,19 @@ func NotFound(w http.ResponseWriter)                 { Error(w, http.StatusNotFo
 func Conflict(w http.ResponseWriter, msg string)     { Error(w, http.StatusConflict, msg) }
 func InternalError(w http.ResponseWriter)            { Error(w, http.StatusInternalServerError, "internal server error") }
 
+// InternalErrorErr logs the real cause and returns it to the client. Use this instead of
+// the bare InternalError so a 500 is diagnosable from both the server logs and the app —
+// callers stop having to guess what went wrong from an opaque "internal server error".
+// op is a short label for where it failed (e.g. "create transaction").
+func InternalErrorErr(w http.ResponseWriter, op string, err error) {
+	slog.Error("handler error", "op", op, "error", err)
+	msg := "internal error"
+	if err != nil {
+		msg = op + ": " + err.Error()
+	}
+	Error(w, http.StatusInternalServerError, msg)
+}
+
 func DecodeJSON(r *http.Request, v any) error {
 	return json.NewDecoder(r.Body).Decode(v)
 }

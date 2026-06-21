@@ -69,6 +69,42 @@ class TransactionRepository(
         else { dao.upsertAll(listOf(prev)); Result.failure(IOException("delete failed (${resp.code})")) }
     }
 
+    /**
+     * Create a transaction (manual / QR) and return its server id so callers can attach a split.
+     * Returns null on a duplicate (409). Refreshes the local cache on success.
+     */
+    suspend fun create(
+        amount: Double,
+        direction: String,
+        merchant: String,
+        category: String,
+        txnDate: String,
+        source: String,
+        referenceId: String? = null,
+    ): Result<String?> = withContext(Dispatchers.IO) {
+        runCatching {
+            val body = JSONObject()
+                .put("amount", amount)
+                .put("direction", direction)
+                .put("merchant_raw", merchant)
+                .put("category", category)
+                .put("txn_date", txnDate)
+                .put("source", source)
+                .apply { referenceId?.let { put("reference_id", it) } }
+                .toString()
+            val resp = backend.post("/v1/transactions", body)
+            when {
+                resp.isSuccess -> {
+                    val id = JSONObject(resp.body).optJSONObject("data")?.optString("id")
+                    refresh()
+                    id
+                }
+                resp.code == 409 -> null
+                else -> throw IOException(resp.errorMessage())
+            }
+        }
+    }
+
     suspend fun clear() = dao.clearAll()
 
     private suspend fun patchOrRevert(id: String, json: String, prev: TransactionEntity): Result<Unit> {

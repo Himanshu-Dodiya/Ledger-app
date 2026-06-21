@@ -62,7 +62,7 @@ func (h *Handler) upsert(w http.ResponseWriter, r *http.Request) {
 		uid, req.FCMToken, req.Platform, model,
 	)
 	if err != nil {
-		httpx.InternalError(w)
+		httpx.InternalErrorErr(w, r.Method+" "+r.URL.Path, err)
 		return
 	}
 	httpx.OK(w, map[string]bool{"registered": true})
@@ -74,7 +74,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		SELECT id, platform, model, last_seen_at, created_at
 		FROM devices WHERE user_id = $1 ORDER BY last_seen_at DESC`, uid)
 	if err != nil {
-		httpx.InternalError(w)
+		httpx.InternalErrorErr(w, r.Method+" "+r.URL.Path, err)
 		return
 	}
 	defer rows.Close()
@@ -84,7 +84,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		var d Device
 		var lastSeen, createdAt time.Time
 		if err := rows.Scan(&d.ID, &d.Platform, &d.Model, &lastSeen, &createdAt); err != nil {
-			httpx.InternalError(w)
+			httpx.InternalErrorErr(w, r.Method+" "+r.URL.Path, err)
 			return
 		}
 		d.LastSeenAt = lastSeen.Format(time.RFC3339)
@@ -100,7 +100,7 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 	tag, err := h.pool.Exec(r.Context(),
 		`DELETE FROM devices WHERE user_id = $1 AND id = $2`, uid, id)
 	if err != nil {
-		httpx.InternalError(w)
+		httpx.InternalErrorErr(w, r.Method+" "+r.URL.Path, err)
 		return
 	}
 	if tag.RowsAffected() == 0 {

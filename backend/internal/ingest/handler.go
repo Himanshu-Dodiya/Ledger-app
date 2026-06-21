@@ -32,6 +32,7 @@ func NewHandler(pool *db.Pool, notifier *notify.Sender) *Handler {
 // Register wires ingest endpoints into mux under authMW.
 func (h *Handler) Register(mux *http.ServeMux, authMW func(http.Handler) http.Handler) {
 	mux.Handle("POST /v1/ingest/sms", authMW(http.HandlerFunc(h.sms)))
+	mux.Handle("POST /v1/ingest/batch", authMW(http.HandlerFunc(h.batch)))
 }
 
 type smsReq struct {
@@ -61,7 +62,7 @@ func (h *Handler) sms(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := ingestSMS(r.Context(), h.pool, uid, req)
 	if err != nil {
-		httpx.InternalError(w)
+		httpx.InternalErrorErr(w, r.Method+" "+r.URL.Path, err)
 		return
 	}
 

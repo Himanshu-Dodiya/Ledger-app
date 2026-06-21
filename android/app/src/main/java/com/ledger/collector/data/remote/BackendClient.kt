@@ -32,10 +32,25 @@ class BackendClient(
     data class Resp(val code: Int, val body: String) {
         val isSuccess: Boolean get() = code in 200..299
         val isAuthError: Boolean get() = code == 401 || code == 403
+
+        /**
+         * The real failure reason: the backend's `{"error": "..."}` envelope when present,
+         * else the raw body, else the HTTP code. Used so the UI shows the actual cause instead
+         * of a generic "something went wrong" — a 500 surfaces the underlying server error.
+         */
+        fun errorMessage(): String {
+            val fromEnvelope = runCatching {
+                org.json.JSONObject(body).optString("error").takeIf { it.isNotBlank() }
+            }.getOrNull()
+            return fromEnvelope
+                ?: body.takeIf { it.isNotBlank() && code != -1 }
+                ?: "request failed ($code)"
+        }
     }
 
     suspend fun get(path: String): Resp = execute("GET", path, null)
     suspend fun post(path: String, json: String): Resp = execute("POST", path, json.toRequestBody(jsonMedia))
+    suspend fun put(path: String, json: String): Resp = execute("PUT", path, json.toRequestBody(jsonMedia))
     suspend fun patch(path: String, json: String): Resp = execute("PATCH", path, json.toRequestBody(jsonMedia))
     suspend fun delete(path: String): Resp = execute("DELETE", path, null)
 

@@ -9,12 +9,18 @@ import com.ledger.collector.data.prefs.SettingsStore
 import com.ledger.collector.data.remote.BackendClient
 import com.ledger.collector.data.remote.HttpSyncApi
 import com.ledger.collector.data.remote.SyncApi
+import com.ledger.collector.data.repository.AnalyticsRepository
 import com.ledger.collector.data.repository.DeviceRepository
 import com.ledger.collector.data.repository.GmailRepository
+import com.ledger.collector.data.repository.GroupsRepository
+import com.ledger.collector.data.repository.ImportRepository
+import com.ledger.collector.data.repository.PeopleRepository
 import com.ledger.collector.data.repository.SmsRepository
+import com.ledger.collector.data.repository.SplitRepository
 import com.ledger.collector.data.repository.SyncRepository
 import com.ledger.collector.data.repository.TransactionRepository
 import com.ledger.collector.data.sms.SmsReader
+import com.ledger.collector.domain.imports.pdf.PdfTextExtractor
 import com.ledger.collector.domain.filter.SenderMatcher
 import com.ledger.collector.domain.filter.TransactionClassifier
 import io.github.jan.supabase.SupabaseClient
@@ -32,6 +38,7 @@ class AppGraph(context: Context) {
     private val database: LedgerDatabase by lazy { LedgerDatabase.build(appContext) }
     private val smsDao by lazy { database.smsMessageDao() }
     private val transactionDao by lazy { database.transactionDao() }
+    private val peopleDao by lazy { database.peopleDao() }
 
     val settingsStore: SettingsStore by lazy { SettingsStore(appContext) }
 
@@ -80,5 +87,20 @@ class AppGraph(context: Context) {
     }
     val deviceRepository: DeviceRepository by lazy {
         DeviceRepository(backendClient)
+    }
+    val importRepository: ImportRepository by lazy {
+        ImportRepository(PdfTextExtractor(appContext), backendClient, transactionRepository)
+    }
+    val peopleRepository: PeopleRepository by lazy {
+        PeopleRepository(peopleDao, backendClient)
+    }
+    val splitRepository: SplitRepository by lazy {
+        SplitRepository(backendClient)
+    }
+    val groupsRepository: GroupsRepository by lazy {
+        GroupsRepository(backendClient)
+    }
+    val analyticsRepository: AnalyticsRepository by lazy {
+        AnalyticsRepository(backendClient)
     }
 }
